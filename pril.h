@@ -119,10 +119,7 @@ pl_rem(void **const p_list, void *const obj,
         }
 
     } else {
-
         // We are the head of a priority level
-
-        bool const singleton = getprev(obj) == obj;
         void *const new_head = getnext(obj);
         if (prev == NULL) {
             *p_list = new_head;
@@ -131,7 +128,7 @@ pl_rem(void **const p_list, void *const obj,
             setnext(prevtail, new_head);
         }
 
-        if (!singleton) {
+        if (!obj_is_tail) {
             // If there was another node after us in this priority level, we
             // must make it into a head.
             setprev(new_head, getprev(obj));

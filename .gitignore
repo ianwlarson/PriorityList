@@ -1,2 +1,3 @@
 test_pril
+test_pril_fuzz
 *.o
