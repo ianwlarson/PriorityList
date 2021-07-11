@@ -88,6 +88,33 @@ pl_rem(void **const p_list, void *const obj,
     void *curr = *p_list;
     int const iprio = getp(obj);
 
+    bool obj_is_tail = false;
+    bool obj_is_head = false;
+    {
+        // See if our node is a tail
+        void const*const maybe_next_prio = getnext(obj);
+        obj_is_tail = (maybe_next_prio == NULL) || (getp(maybe_next_prio) != iprio);
+
+        // See if our node is a head
+        void *const maybe_tail = getprev(obj);
+        obj_is_head = (getnext(maybe_tail) != obj);
+    }
+
+    if (!obj_is_head && !obj_is_tail) {
+        // This is probably the most common case (?)
+
+        // Neither head nor tail, the current priority level has at least 2
+        // more things.
+        void *const prev_node = getprev(obj);
+        void *const next_node = getnext(obj);
+        setnext(prev_node, next_node);
+        setprev(next_node, prev_node);
+        return;
+    }
+
+    // If the node we're removing is a head or tail, we need to get pointers to
+    // the current priority level head and the previous priority level head.
+
     for (;;) {
         int const cprio = getp(curr);
         if (cprio == iprio) {
@@ -99,24 +126,12 @@ pl_rem(void **const p_list, void *const obj,
         }
     }
 
-    bool const obj_is_head = curr == obj;
-    bool const obj_is_tail = getprev(curr) == obj;
     if (!obj_is_head) {
-        // Easy cases!
-        if (!obj_is_tail) {
-            // Neither head nor tail, the current priority level has at least 2
-            // more things.
-            void *const prev_node = getprev(obj);
-            void *const next_node = getnext(obj);
-            setnext(prev_node, next_node);
-            setprev(next_node, prev_node);
-        } else {
-            // not head, but tail, the current priority level has at least 1
-            // more thing in it.
-            void *const new_tail = getprev(obj);
-            setprev(curr, new_tail);
-            setnext(new_tail, getnext(obj));
-        }
+        // not head, but tail, the current priority level has at least 1 more
+        // thing in it.
+        void *const new_tail = getprev(obj);
+        setprev(curr, new_tail);
+        setnext(new_tail, getnext(obj));
 
     } else {
         // We are the head of a priority level

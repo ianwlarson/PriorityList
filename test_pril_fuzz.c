@@ -50,6 +50,8 @@ main(void)
             thing_rem(&list, obj);
             memset(obj, 0, sizeof(*obj));
             free(obj);
+
+            check_list(&list);
         }
     }
 
@@ -74,6 +76,8 @@ main(void)
                 memset(obj, 0, sizeof(*obj));
                 free(obj);
             }
+
+            check_list(&list);
         }
     }
 
@@ -93,6 +97,8 @@ main(void)
             thing_rem(&list, tail);
             memset(tail, 0, sizeof(*obj));
             free(tail);
+
+            check_list(&list);
         }
     }
 
@@ -119,6 +125,8 @@ main(void)
                 memset(tail, 0, sizeof(*obj));
                 free(tail);
             }
+
+            check_list(&list);
         }
     }
 
