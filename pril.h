@@ -4,11 +4,6 @@
 #include <stdbool.h>
 
 typedef int (*pgetp_t)(void const*);
-typedef void (*psetnext_t)(void *, void *);
-typedef void (*psetprev_t)(void *, void *);
-
-typedef void* (*pgetnext_t)(void *);
-typedef void* (*pgetprev_t)(void *);
 
 typedef void** (*pgetnextr_t)(void *);
 typedef void** (*pgetprevr_t)(void *);
@@ -63,23 +58,22 @@ __attribute__((always_inline))
 static inline void
 pl_rem(void **const p_list, void *const obj,
     pgetp_t const getp,
-    pgetnext_t const getnext, pgetprev_t const getprev,
-    psetnext_t const setnext, psetprev_t const setprev)
+    pgetnextr_t const getnextr, pgetprevr_t const getprevr)
 {
-    void *prev = NULL; // points to head of previous priority level
-    void *curr = *p_list;
+    void **prevp = p_list;  // Pointer that points to curr
+    void *curr = *prevp;    // Points to head of current priority level
     int const iprio = getp(obj);
 
     bool obj_is_tail = false;
     bool obj_is_head = false;
     {
         // See if our node is a tail
-        void const*const maybe_next_prio = getnext(obj);
+        void const*const maybe_next_prio = *getnextr(obj);
         obj_is_tail = (maybe_next_prio == NULL) || (getp(maybe_next_prio) != iprio);
 
         // See if our node is a head
-        void *const maybe_tail = getprev(obj);
-        obj_is_head = (getnext(maybe_tail) != obj);
+        void *const maybe_tail = *getprevr(obj);
+        obj_is_head = (*getnextr(maybe_tail) != obj);
     }
 
     if (!obj_is_head && !obj_is_tail) {
@@ -87,10 +81,10 @@ pl_rem(void **const p_list, void *const obj,
 
         // Neither head nor tail, the current priority level has at least 2
         // more things.
-        void *const prev_node = getprev(obj);
-        void *const next_node = getnext(obj);
-        setnext(prev_node, next_node);
-        setprev(next_node, prev_node);
+        void *const prev_node = *getprevr(obj);
+        void *const next_node = *getnextr(obj);
+        *getnextr(prev_node) = next_node;
+        *getprevr(next_node) = prev_node;
         return;
     }
 
@@ -102,33 +96,28 @@ pl_rem(void **const p_list, void *const obj,
         if (cprio == iprio) {
             break;
         } else {
-            prev = curr;
-            void *const tail = getprev(curr);
-            curr = getnext(tail);
+            void *const curr_tail = *getprevr(curr);
+            prevp = getnextr(curr_tail);
+            curr = *prevp;
         }
     }
 
     if (!obj_is_head) {
         // not head, but tail, the current priority level has at least 1 more
         // thing in it.
-        void *const new_tail = getprev(obj);
-        setprev(curr, new_tail);
-        setnext(new_tail, getnext(obj));
+        void *const new_tail = *getprevr(obj);
+        *getprevr(curr) = new_tail;
+        *getnextr(new_tail) = *getnextr(obj);
 
     } else {
         // We are the head of a priority level
-        void *const new_head = getnext(obj);
-        if (prev == NULL) {
-            *p_list = new_head;
-        } else {
-            void *const prevtail = getprev(prev);
-            setnext(prevtail, new_head);
-        }
+        void *const new_head = *getnextr(obj);
+        *prevp = new_head;
 
         if (!obj_is_tail) {
             // If there was another node after us in this priority level, we
             // must make it into a head.
-            setprev(new_head, getprev(obj));
+            *getprevr(new_head) = *getprevr(obj);
         }
     }
 }
