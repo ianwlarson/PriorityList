@@ -60,7 +60,11 @@ main(void)
             thing_t *obj = malloc(sizeof(*obj));
             int const prio = xorshift32(&rng) % NUM_PRIOS;
             obj->prio = prio;
-            thing_push(&list, obj);
+            if (i & 0x1) {
+                thing_push(&list, obj);
+            } else {
+                thing_pushleft(&list, obj);
+            }
         }
 
         while (list != NULL) {

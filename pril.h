@@ -6,75 +6,57 @@
 typedef int (*pgetp_t)(void const*);
 typedef void (*psetnext_t)(void *, void *);
 typedef void (*psetprev_t)(void *, void *);
+
 typedef void* (*pgetnext_t)(void *);
 typedef void* (*pgetprev_t)(void *);
+
+typedef void** (*pgetnextr_t)(void *);
+typedef void** (*pgetprevr_t)(void *);
 
 __attribute__((always_inline))
 static inline void
 pl_push(void **const p_list, void *const obj,
+    bool const left,
     pgetp_t const getp,
-    pgetnext_t const getnext, pgetprev_t const getprev,
-    psetnext_t const setnext, psetprev_t const setprev)
+    pgetnextr_t const getnextr, pgetprevr_t const getprevr)
 {
-    void *prev = NULL; // points to head of previous priority level
-    void *insertion = *p_list;
+    void **prevp = p_list;  // Pointer that points to curr
+    void *curr = *prevp;    // Points to head of current priority level
+
     int const iprio = getp(obj);
 
-    bool add_to_prev = false;
-    bool add_to_tail = false;
+    while (curr != NULL) {
+        int const cprio = getp(curr);
+        if (cprio == iprio) {
 
-    while (insertion != NULL) {
-        int const cprio = getp(insertion);
-        if (cprio < iprio) {
-            add_to_prev = true;
-            break;
-        } else if (cprio == iprio) {
-            add_to_tail = true;
-            break;
-        } else {
-            prev = insertion;
-            void *const tail = getprev(insertion);
-            insertion = getnext(tail);
-        }
-    }
-
-    if (insertion == NULL) {
-        // new priority level at end
-        setnext(obj, NULL);
-        setprev(obj, obj);
-        if (prev == NULL) {
-            *p_list = obj;
-        } else {
-            void *const tail = getprev(prev);
-            setnext(tail, obj);
-        }
-    } else {
-        if (add_to_tail) {
-            // insertion is the same prio
-            void *oldtail = getprev(insertion);
-            setprev(insertion, obj); // set obj as new tail
-            setprev(obj, oldtail);
-            setnext(obj, getnext(oldtail));
-            setnext(oldtail, obj);
-        } else if (add_to_prev) {
-            // New priority level inbetween prev and insertion
-            setprev(obj, obj);
-            if (prev == NULL) {
-                setnext(obj, insertion);
-                *p_list = obj;
+            void *const curr_tail = *getprevr(curr);
+            if (left) {
+                *prevp = obj;
+                *getprevr(obj) = curr_tail; // Make obj a head node
+                *getnextr(obj) = curr;
+                *getprevr(curr) = obj;      // Make curr _not_ a head node.
             } else {
-                void *prevtail = getprev(prev);
-                setnext(obj, getnext(prevtail));
-                setnext(prevtail, obj);
+                *getprevr(curr) = obj;      // make us a tail node
+                *getprevr(obj) = curr_tail; // set our prev to the current tail
+                void *const nextp = *getnextr(curr_tail); // get the node after the current tail
+                *getnextr(obj) = nextp;     // point to it
+                *getnextr(curr_tail) = obj; // current tail points to us
             }
+
+            return;
+        } else if (cprio < iprio) {
+            // We need to create a new priority level
+            break;
         } else {
-            // insertion is a higher priority, we need to make a new priority
-            void *tail = getprev(insertion);
-            setnext(obj, NULL);
-            setprev(obj, obj);
-            setnext(tail, obj);
+            void *const curr_tail = *getprevr(curr);
+            prevp = getnextr(curr_tail);
+            curr = *prevp;
         }
     }
+
+    *prevp = obj;
+    *getprevr(obj) = obj;
+    *getnextr(obj) = curr;
 }
 
 __attribute__((always_inline))
